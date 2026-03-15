@@ -1,0 +1,41 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.DotSettings.user
+
+## Build artifacts
+artifacts/
+dist/
+
+## Logs
+logs/
+*.log
+
+## Secrets / env
+.env
+.env.*
+!.env.example
+
+## JetBrains Rider
+.idea/
+
+## VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+## macOS
+.DS_Store
+
+## Claude Code
+.claude/
+
+## Terraform (if ever added)
+.terraform/
+*.tfstate
+*.tfstate.*

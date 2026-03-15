@@ -1,0 +1,30 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: API Gateway CFT
+
+Parameters:
+  BasePath:
+    Default: ''
+    Description: Base path for Rest API
+    Type: String
+  DomainName:
+    Description: API Custom Domain Name API Name
+    Type: String
+  RestApiRef:
+    Description: REST API id
+    Type: String
+
+Resources:
+  
+  BasePathMapping:
+    Type: 'AWS::ApiGateway::BasePathMapping'
+    Properties:
+      BasePath: !Ref BasePath
+      DomainName:
+        Fn::ImportValue:
+          !Sub "${DomainName}"
+      RestApiId:
+        Fn::ImportValue:
+          !Sub "${RestApiRef}"
+      Stage: Prod
+      

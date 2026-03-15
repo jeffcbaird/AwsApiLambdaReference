@@ -1,0 +1,14 @@
+[
+  {
+    "ParameterKey": "ApiGatewayExport",
+    "ParameterValue": "#{AWS.PrimaryRegion}-#{AWS.env}-reference-lambda-Id"
+  },
+  {
+    "ParameterKey": "LambdaArnExport",
+    "ParameterValue": "#{AWS.PrimaryRegion}-#{AWS.env}-reference-lambda-Arn"
+  },
+  {
+    "ParameterKey": "LambdaFunctionRoleExport",
+    "ParameterValue": "#{AWS.PrimaryRegion}-#{AWS.env}-reference-lambda-IamRole"
+  }
+]

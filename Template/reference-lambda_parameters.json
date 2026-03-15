@@ -1,0 +1,46 @@
+[
+  {
+    "ParameterKey": "CodeUriBucket",
+    "ParameterValue": "#{AWS.env}-deployment-artifacts"
+  },
+  {
+    "ParameterKey": "CodeUriKey",
+    "ParameterValue": "reference/LambdaApiReference.zip"
+  },
+  {
+    "ParameterKey": "VpcIdRef",
+    "ParameterValue": "#{AWS.PrimaryRegion}-#{AWS.env}-vpc-VpcId"
+  },
+  {
+    "ParameterKey": "SubnetId0",
+    "ParameterValue": "#{AWS.PrimaryRegion}-#{AWS.env}-vpc-PrivateSubnet0"
+  },
+  {
+    "ParameterKey": "SubnetId1",
+    "ParameterValue": "#{AWS.PrimaryRegion}-#{AWS.env}-vpc-PrivateSubnet1"
+  },
+  {
+    "ParameterKey": "SsmEndpointSecurityGroupId",
+    "ParameterValue": "#{AWS.PrimaryRegion}-#{AWS.env}-vpc-SsmEndpointSecurityGroupId"
+  },
+  {
+    "ParameterKey": "SnsEndpointSecurityGroupId",
+    "ParameterValue": "#{AWS.PrimaryRegion}-#{AWS.env}-vpc-SnsEndpointSecurityGroupId"
+  },
+  {
+    "ParameterKey": "ClusterSecurityGroupId",
+    "ParameterValue": "#{AWS.PrimaryRegion}-#{AWS.env}-aurora-ClusterSecurityGroupId"
+  },
+  {
+    "ParameterKey": "SnsReferenceTopic",
+    "ParameterValue": "#{AWS.PrimaryRegion}-#{AWS.env}-reference-sns-TopicArn"
+  },
+  {
+    "ParameterKey": "SnsReferencePolicy",
+    "ParameterValue": "#{AWS.PrimaryRegion}-#{AWS.env}-reference-sns-PublishPolicy"
+  },
+  {
+    "ParameterKey": "ReferenceAuroraClusterWriteEndpoint",
+    "ParameterValue": "/#{AWS.env}/aurora/reference/write-endpoint"
+  }
+]

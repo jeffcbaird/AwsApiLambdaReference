@@ -1,0 +1,232 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Reference Lambda Rest API
+
+Globals:
+  Function:
+    Timeout: 29  # API Gateway maximum integration timeout is 29s
+
+Parameters:
+  CodeUriBucket:
+    Type: String
+    Default: ""
+  CodeUriKey:
+    Type: String
+    Default: ""
+  VpcIdRef:
+    Type: String
+    Description: Export name of VPC ID for security group
+  SubnetId0:
+    Description: Export name of Subnet0 Lambda will be attached to
+    Type: String
+    Default: ""
+  SubnetId1:
+    Description: Export name of Subnet1 Lambda will be attached to
+    Type: String
+    Default: ""
+  SsmEndpointSecurityGroupId:
+    Description: Export name of security group ID for the parameter store VPC endpoint
+    Type: String
+    Default: ""
+  SnsEndpointSecurityGroupId:
+    Description: Export name of security group ID for the SNS VPC endpoint
+    Type: String
+    Default: ""
+  ClusterSecurityGroupId:
+    Description: Export name of security group ID for Aurora cluster
+    Type: String
+    Default: ""
+  SnsReferenceTopic:
+    Type: String
+    Description: Export name of SNS Topic for References
+    Default: ""
+  SnsReferencePolicy:
+    Type: String
+    Description: Export name of policy needed to publish to SNS
+    Default: ""
+  ReferenceAuroraClusterWriteEndpoint:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Reference Aurora cluster write endpoint
+
+Resources:
+
+  LambdaPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: Lambda-Reference-Policy
+      Description: Allows the use of resources to the lambda function
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - ec2:CreateNetworkInterface
+              - ec2:DetachNetworkInterface
+              - ec2:DescribeNetworkInterfaces
+              - ec2:DeleteNetworkInterface
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - kms:Decrypt
+              - kms:DescribeKey
+              - kms:GenerateDataKey
+            Resource:
+              "Fn::Sub": "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*"
+          - Effect: Allow
+            Action:
+              - ssm:GetParametersByPath
+            Resource:
+              "Fn::Sub": "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/apps/Domain/Reference/*"
+          - Effect: Allow
+            Action:
+              - lambda:InvokeFunction
+            Resource:
+              - !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:*"
+          - Effect: Allow
+            Action:
+              - "rds-db:connect"
+            Resource: !Sub "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:*/reference_api_iam"
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: Reference-LambdaFunction-Role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+      Path: /
+      Description: Allows the Reference Lambda function to access required AWS resources
+      ManagedPolicyArns:
+        - Ref: LambdaPolicy
+        - "Fn::ImportValue": {Ref: "SnsReferencePolicy"}
+
+  LambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: LambdaApiReference::LambdaApiReference.LambdaEntryPoint::FunctionHandlerAsync
+      Tracing: Active
+      Role:
+        "Fn::GetAtt": LambdaRole.Arn
+      Runtime: dotnet8
+      CodeUri:
+        Bucket: { Ref: "CodeUriBucket" }
+        Key: { Ref: "CodeUriKey" }
+      MemorySize: 1024
+      Layers:
+        - !Sub "arn:aws:lambda:${AWS::Region}:901920570463:layer:aws-otel-collector-amd64-ver-0-90-1:1"
+      Environment:
+        Variables:
+          AWS_LAMBDA_HANDLER_LOG_FORMAT: "Unformatted"
+          ReferenceOptions__Region: {Ref: "AWS::Region" }
+          ReferenceOptions__ReferencePublishSnsTopic: {Fn::ImportValue: {Ref: SnsReferenceTopic}}
+          RDSConnection__Server: {Ref: "ReferenceAuroraClusterWriteEndpoint"}
+      Events:
+        ProxyResource:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+            Auth:
+              Authorizer: AWS_IAM
+        RootResource:
+          Type: Api
+          Properties:
+            Path: /
+            Method: ANY
+            Auth:
+              Authorizer: AWS_IAM
+      VpcConfig:
+        SecurityGroupIds:
+          - "Fn::ImportValue": {Ref: "SsmEndpointSecurityGroupId"}
+          - "Fn::ImportValue": {Ref: "SnsEndpointSecurityGroupId"}
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - "Fn::ImportValue": {Ref: "SubnetId0"}
+          - "Fn::ImportValue": {Ref: "SubnetId1"}
+
+  LambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: LambdaFunction
+    Properties:
+      LogGroupName: !Join
+        - ''
+        - - "/aws/lambda/"
+          - !Ref "LambdaFunction"
+      RetentionInDays: 14
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub "scnt-${AWS::Region}-Reference-lambda-security-group"
+      GroupDescription: Lambda security group for sg rules to configure service access
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${VpcIdRef}"
+      SecurityGroupEgress:
+        - Description: "Allow all outbound traffic by default"
+          CidrIp: "0.0.0.0/0"
+          IpProtocol: "-1"
+
+  AuroraClusterAccessSgRule:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId:
+        Fn::ImportValue:
+          Fn::Sub: ${ClusterSecurityGroupId}
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      SourceSecurityGroupId: !Ref LambdaSecurityGroup
+      Description: "Allow lambda access to Aurora cluster"
+
+Outputs:
+  LambdaApi:
+    Description: "API Gateway endpoint URL for Prod stage for Reference function"
+    Value:
+      "Fn::Sub": "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+  LambdaFunction:
+    Description: "Lambda Function ARN"
+    Value:
+      "Fn::GetAtt": LambdaFunction.Arn
+    Export:
+      Name:
+        "Fn::Sub": "${AWS::StackName}-Arn"
+  LambdaFunctionName:
+    Description: "Lambda Function Name"
+    Value: !Ref LambdaFunction
+    Export:
+      Name: !Sub "${AWS::StackName}-LambdaName"
+  CloudwatchLogGroup:
+    Description: "Cloudwatch Log Group Name"
+    Value: !Ref LambdaLogGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-LogGroupName"
+  IamRole:
+    Description: "IAM Role name for the Lambda function"
+    Value: !Ref LambdaRole
+    Export:
+      Name: !Sub "${AWS::StackName}-IamRole"
+  IamRoleArn:
+    Description: "IAM Role ARN for the Lambda function"
+    Value:
+      "Fn::GetAtt": LambdaRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-IamRoleArn"
+  ApiId:
+    Description: "REST API ID in API Gateway"
+    Value:
+      Ref: "ServerlessRestApi"
+    Export:
+      Name:
+        "Fn::Sub": "${AWS::StackName}-Id"

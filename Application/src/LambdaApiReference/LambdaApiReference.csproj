@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>LambdaApiReference</AssemblyName>
+    <RootNamespace>LambdaApiReference</RootNamespace>
+    <!-- IIS Express in-process hosting for local development -->
+    <AspNetCoreHostingModel>InProcess</AspNetCoreHostingModel>
+    <!-- Required for dotnet lambda package to generate runtime config -->
+    <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
+    <AWSProjectType>Lambda</AWSProjectType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Lambda hosting for API Gateway REST API (v1) proxy events -->
+    <PackageReference Include="Amazon.Lambda.AspNetCoreServer" Version="9.0.0" />
+    <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="4.0.3.25" />
+    <PackageReference Include="AWSSDK.SimpleNotificationService" Version="4.0.2.19" />
+    <PackageReference Include="Dapper" Version="2.1.72" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+    <PackageReference Include="Npgsql" Version="10.0.2" />
+    <!-- Swagger / OpenAPI -->
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
+  </ItemGroup>
+
+</Project>

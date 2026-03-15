@@ -1,0 +1,82 @@
+version: '3.4'
+name: reference-app
+
+networks:
+  sharednet:
+
+services:
+  reference.serverless.app:
+    image: ${DOCKER_REGISTRY-}referenceserverlessapp
+    networks:
+      - sharednet
+    build:
+      context: .
+      dockerfile: src/LambdaApiReference/Dockerfile
+    environment:
+      - "AWS_REGION=us-west-2"
+      - "AWS_ACCESS_KEY_ID=local"
+      - "AWS_SECRET_ACCESS_KEY=local"
+      - ASPNETCORE_ENVIRONMENT=Development
+      - RDSConnection__Server=reference_postgres
+      - RDSConnection__Port=5432
+      - RDSConnection__Database=reference
+      - RDSConnection__Username=reference_app
+      - RDSConnection__Password=LocalDockerPass
+    ports:
+      - "9884:80"
+    depends_on:
+      postgres-reference:
+        condition: service_healthy
+
+  postgres-reference:
+    container_name: "reference_postgres"
+    image: postgres
+    networks:
+      - sharednet
+    restart: always
+    user: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Pass@word123
+      POSTGRES_DB: reference
+    volumes:
+      - ./docker/postgres/provisioning:/docker-entrypoint-initdb.d
+    ports:
+      - "5431:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "sh -c 'pg_isready -d postgresql://localhost/reference'"]
+      interval: 7s
+      timeout: 10s
+      retries: 3
+
+  postgres-reference_shadow:
+    container_name: "reference_postgres_shadow"
+    image: postgres
+    networks:
+      - sharednet
+    restart: always
+    user: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Pass@word123
+      POSTGRES_DB: reference
+    volumes:
+      - ./docker/postgres/provisioning:/docker-entrypoint-initdb.d
+    ports:
+      - "5430:5432"
+
+  flyway:
+    image: flyway/flyway
+    networks:
+      - sharednet
+    command: >
+        -url=jdbc:postgresql://reference_postgres/reference
+        -schemas=deployer_schema,reference,reference_api,external_data
+        -user=reference_deployuser -password=LocalDeployPass
+        -X migrate
+    volumes:
+      - ../Data/reference/:/flyway/sql/
+      - ./docker/postgres/test_data/:/flyway/sql/migrations/callbacks/
+    depends_on:
+      postgres-reference:
+        condition: service_healthy

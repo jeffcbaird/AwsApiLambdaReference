@@ -1,0 +1,15 @@
+{
+  "information": [
+    "Default values used by `dotnet lambda` CLI commands.",
+    "Override any value on the command line or in serverless.yml.",
+    "Docs: https://github.com/aws/aws-extensions-for-dotnet-cli"
+  ],
+  "profile": "",
+  "region": "us-east-1",
+  "configuration": "Release",
+  "function-runtime": "dotnet8",
+  "function-architecture": "x86_64",
+  "function-memory-size": 512,
+  "function-timeout": 30,
+  "function-handler": "LambdaApiReference::LambdaApiReference.LambdaEntryPoint::FunctionHandlerAsync"
+}

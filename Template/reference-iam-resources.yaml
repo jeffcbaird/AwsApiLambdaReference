@@ -1,0 +1,84 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Policies for accessing the Rest API
+
+Parameters:
+  ApiGatewayExport:
+    Description: API gateway ID export name
+    Type: String
+
+  LambdaArnExport:
+    Description: Lambda export name
+    Type: String
+
+  LambdaFunctionRoleExport:
+    Description: Lambda role export name
+    Type: String
+
+Resources:
+  ApiGatewayReadWriteInvokePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: Reference-API-ReadWrite-Policy
+      Description: Policy to allow execute access to api gateway
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+            - execute-api:Invoke
+            Effect: Allow
+            Resource:
+              Fn::Sub:
+                - "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${currentapiid}/*"
+                - currentapiid:
+                    Fn::ImportValue:
+                      !Sub "${ApiGatewayExport}"
+          - Action:
+            - lambda:InvokeFunction
+            Effect: Allow
+            Resource:
+              Fn::ImportValue:
+                !Sub "${LambdaArnExport}"
+      Roles:
+        - Fn::ImportValue:
+            !Sub "${LambdaFunctionRoleExport}"
+
+  ApiGatewayReadInvokePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: Reference-API-ReadOnly-Policy
+      Description: Policy to allow read-only execute access to api gateway
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+            - execute-api:Invoke
+            Effect: Allow
+            Resource:
+              Fn::Sub:
+                - "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${currentapiid}/*/GET/*"
+                - currentapiid:
+                    Fn::ImportValue:
+                      !Sub "${ApiGatewayExport}"
+          - Action:
+            - lambda:InvokeFunction
+            Effect: Allow
+            Resource:
+              Fn::ImportValue:
+                !Sub "${LambdaArnExport}"
+      Roles:
+        - Fn::ImportValue:
+            !Sub "${LambdaFunctionRoleExport}"
+
+Outputs:
+  ApiGatewayReadWritePolicyOutput:
+    Description: "Policy for apps to invoke apigateway and execute lambda"
+    Value:
+      Ref: "ApiGatewayReadWriteInvokePolicy"
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiGatewayReadWriteInvokePolicy"
+  ApiGatewayReadPolicyOutput:
+    Description: "Policy for apps to read from apigateway and execute lambda"
+    Value:
+      Ref: "ApiGatewayReadInvokePolicy"
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiGatewayReadInvokePolicy"

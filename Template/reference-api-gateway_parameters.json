@@ -1,0 +1,14 @@
+[
+  {
+    "ParameterKey": "BasePath",
+    "ParameterValue": "reference"
+  },
+  {
+    "ParameterKey": "DomainName",
+    "ParameterValue": "#{AWS.PrimaryRegion}-#{AWS.env}-default-public-DomainName"
+  },
+  {
+    "ParameterKey": "RestApiRef",
+    "ParameterValue": "#{AWS.PrimaryRegion}-#{AWS.env}-reference-lambda-Id"
+  }
+]
